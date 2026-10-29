@@ -379,7 +379,7 @@ export default function WordSearchGame() {
               completed={completed}
               onWordAttempt={handleWordAttempt}
               onTapStart={handleTapStart}
-              onSelectionChange={(path) => { setRestoredSelection(path); attempt.select(path); }}
+              onSelectionChange={attempt.select}
             />
             </fieldset>
           </div>

@@ -173,7 +173,6 @@ export default function PuzzleBoard({
     if (path.join(",") !== previousPathRef.current) {
       if (path.length > 1) tapAnchorRef.current = null;
       updateSelection(path);
-      onSelectionChange(path);
     }
   };
 

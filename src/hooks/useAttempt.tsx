@@ -94,6 +94,7 @@ export function useAttempt(onRestore: (snapshot: Snapshot) => void) {
   };
   const select = (selection: number[]) => {
     if (!current.current || current.current.status !== "in_progress") return;
+    if (current.current.selection.join(",") === selection.join(",")) return;
     current.current.selection = [...selection];
     publish();
   };
