@@ -13,9 +13,11 @@ type PuzzleBoardProps = {
   hintCell: number | null;
   invalidPath: number[];
   resetToken: number;
+  restoredSelection: number[];
   completed: boolean;
   onWordAttempt: (path: number[]) => void;
   onTapStart: () => void;
+  onSelectionChange: (path: number[]) => void;
 };
 
 type CellProps = {
@@ -75,9 +77,11 @@ export default function PuzzleBoard({
   hintCell,
   invalidPath,
   resetToken,
+  restoredSelection,
   completed,
   onWordAttempt,
   onTapStart,
+  onSelectionChange,
 }: PuzzleBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<number[]>([]);
@@ -105,6 +109,15 @@ export default function PuzzleBoard({
   useEffect(() => {
     clearInteraction();
   }, [resetToken, clearInteraction]);
+
+  useEffect(() => {
+    if (restoredSelection.length === 0) return;
+    pointerDownRef.current = false;
+    startRef.current = null;
+    lastValidRef.current = null;
+    tapAnchorRef.current = restoredSelection.length === 1 ? restoredSelection[0] : null;
+    updateSelection(restoredSelection);
+  }, [restoredSelection, updateSelection]);
 
   const foundCellTones = useMemo(() => {
     const tones = new Map<number, Tone>();
@@ -160,6 +173,7 @@ export default function PuzzleBoard({
     if (path.join(",") !== previousPathRef.current) {
       if (path.length > 1) tapAnchorRef.current = null;
       updateSelection(path);
+      onSelectionChange(path);
     }
   };
 
@@ -185,10 +199,12 @@ export default function PuzzleBoard({
         const fullPath = buildPath(anchor, end);
         tapAnchorRef.current = null;
         updateSelection([]);
+        onSelectionChange([]);
         onWordAttempt(fullPath);
       } else {
         tapAnchorRef.current = end;
         updateSelection([end]);
+        onSelectionChange([end]);
         onTapStart();
       }
 
@@ -199,6 +215,7 @@ export default function PuzzleBoard({
 
     tapAnchorRef.current = null;
     updateSelection([]);
+    onSelectionChange([]);
     startRef.current = null;
     lastValidRef.current = null;
     onWordAttempt(path);

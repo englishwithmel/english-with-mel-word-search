@@ -5,7 +5,7 @@ import WordList from "./WordList";
 import Celebration from "./Celebration";
 import { useSpeech } from "../hooks/useSpeech";
 import { useAttempt } from "../hooks/useAttempt";
-import { formatTime } from "../lib/attempt";
+import { formatTime, type Snapshot } from "../lib/attempt";
 import {
   ALL_WORDS,
   FLAT_LETTERS,
@@ -47,9 +47,9 @@ function getInitialAudioPreference() {
 }
 
 export default function WordSearchGame() {
-  const attempt = useAttempt();
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [foundPaths, setFoundPaths] = useState<Record<string, number[]>>({});
+  const [restoredSelection, setRestoredSelection] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [hintCell, setHintCell] = useState<number | null>(null);
   const [invalidPath, setInvalidPath] = useState<number[]>([]);
@@ -60,10 +60,22 @@ export default function WordSearchGame() {
   const [toast, setToast] = useState<Toast | null>(null);
 
   const foundRef = useRef<string[]>([]);
+  const foundPathsRef = useRef<Record<string, number[]>>({});
   const hintTimerRef = useRef<number | null>(null);
   const invalidTimerRef = useRef<number | null>(null);
   const boardCardRef = useRef<HTMLElement>(null);
   const { speak, stop, supported: speechSupported } = useSpeech();
+
+  const applyRestore = useCallback((snapshot: Snapshot) => {
+    const restoredPaths = Object.fromEntries(snapshot.words.map((word) => [word, snapshot.foundPaths[word] ?? WORD_PATHS[word]?.[0] ?? []]));
+    foundRef.current = [...snapshot.words];
+    foundPathsRef.current = restoredPaths;
+    setFoundWords([...snapshot.words]);
+    setFoundPaths(restoredPaths);
+    setRestoredSelection([...snapshot.selection]);
+    setResetToken((token) => token + 1);
+  }, []);
+  const attempt = useAttempt(applyRestore);
 
   const completed = foundWords.length === TOTAL_WORDS;
 
@@ -86,12 +98,6 @@ export default function WordSearchGame() {
     const timer = window.setTimeout(() => setToast(null), 2300);
     return () => window.clearTimeout(timer);
   }, [toast]);
-
-  useEffect(() => {
-    if (!resetArmed) return;
-    const timer = window.setTimeout(() => setResetArmed(false), 3600);
-    return () => window.clearTimeout(timer);
-  }, [resetArmed]);
 
   useEffect(() => {
     if (foundWords.length !== TOTAL_WORDS) return;
@@ -147,10 +153,13 @@ export default function WordSearchGame() {
       }
 
       const nextFound = [...foundRef.current, matchedWord];
+      const nextPaths = { ...foundPathsRef.current, [matchedWord]: path };
       foundRef.current = nextFound;
+      foundPathsRef.current = nextPaths;
       setFoundWords(nextFound);
-      attempt.found(nextFound);
-      setFoundPaths((current) => ({ ...current, [matchedWord]: path }));
+      setFoundPaths(nextPaths);
+      setRestoredSelection([]);
+      attempt.found(nextFound, nextPaths);
       stopHintTimer();
       setHintCell(null);
       setInvalidPath([]);
@@ -196,8 +205,10 @@ export default function WordSearchGame() {
     stopHintTimer();
     if (invalidTimerRef.current) window.clearTimeout(invalidTimerRef.current);
     foundRef.current = [];
+    foundPathsRef.current = {};
     setFoundWords([]);
     setFoundPaths({});
+    setRestoredSelection([]);
     setFeedback(null);
     setHintCell(null);
     setInvalidPath([]);
@@ -205,14 +216,11 @@ export default function WordSearchGame() {
     setResetArmed(false);
     setCelebrationOpen(false);
     stop();
-  }, [stop]);
+  }, [attempt, stop, stopHintTimer]);
 
-  const handleReset = () => {
-    if (foundRef.current.length > 0 && !resetArmed) {
-      setResetArmed(true);
-      return;
-    }
-
+  const handleReset = () => setResetArmed(true);
+  const cancelReset = () => setResetArmed(false);
+  const confirmReset = () => {
     resetPuzzle();
     setToast({ id: Date.now(), message: "Fresh puzzle ready — happy hunting!" });
   };
@@ -279,7 +287,7 @@ export default function WordSearchGame() {
         <div className="flex flex-wrap items-center gap-3">
           <strong>Playing time: {formatTime(attempt.seconds)}</strong>
           <span>Hints used: {attempt.hints}</span>
-          <button type="button" onClick={attempt.togglePause} disabled={!attempt.started || completed} className="rounded-lg border px-3 py-1">{attempt.paused ? "Resume" : "Pause"}</button>
+          <button type="button" onClick={attempt.togglePause} disabled={!attempt.ready || !attempt.started || completed} className="rounded-lg border px-3 py-1">{attempt.paused ? "Resume" : "Pause"}</button>
         </div>
         <p className="mt-1 text-xs">{attempt.saveMessage}</p>
         {attempt.saveMessage.includes("try again") && <button type="button" onClick={attempt.retry} className="underline">Try saving again</button>}
@@ -316,7 +324,7 @@ export default function WordSearchGame() {
                 <button
                   type="button"
                   onClick={handleHint}
-                  disabled={completed || attempt.paused}
+                  disabled={!attempt.ready || completed || attempt.paused}
                   className="inline-flex h-8 items-center justify-center sm:h-9 gap-1 rounded-[8px] border border-[#e5d291] bg-butter-soft px-2 text-[10px] font-extrabold text-[#725a24] transition hover:bg-[#f8ebac] disabled:cursor-not-allowed disabled:opacity-45 sm:text-[10.5px]"
                   title="Glow the first letter of one unfound word"
                 >
@@ -327,16 +335,13 @@ export default function WordSearchGame() {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className={`inline-flex h-8 items-center justify-center sm:h-9 gap-1 rounded-[8px] border px-2 text-[10px] font-extrabold transition sm:text-[10.5px] ${
-                    resetArmed
-                      ? "border-[#e2ad98] bg-[#fbe2d7] text-[#8d5037]"
-                      : "border-[#e6dac7] bg-white text-[#677162] hover:bg-[#fcf7ed]"
-                  }`}
-                  aria-label={resetArmed ? "Tap again to reset all progress" : "Reset the word search"}
-                  title={resetArmed ? "Tap again to confirm reset" : "Clear the board and start again"}
+                  disabled={!attempt.ready}
+                  className="inline-flex h-8 items-center justify-center sm:h-9 gap-1 rounded-[8px] border border-[#e6dac7] bg-white px-2 text-[10px] font-extrabold text-[#677162] transition hover:bg-[#fcf7ed] disabled:opacity-45 sm:text-[10.5px]"
+                  aria-label="Reset the word search"
+                  title="Clear the board and start again"
                 >
                   <ResetIcon className="h-3.5 w-3.5" />
-                  {resetArmed ? "Reset?" : "Reset"}
+                  Reset
                 </button>
 
                 <button
@@ -362,16 +367,19 @@ export default function WordSearchGame() {
           </div>
 
           <div className="puzzle-frame mt-2" onPointerDownCapture={attempt.start}>
-            <fieldset disabled={attempt.paused} style={{ border: 0, padding: 0, margin: 0, position: "relative" }}>
+            <fieldset disabled={!attempt.ready || attempt.paused} style={{ border: 0, padding: 0, margin: 0, position: "relative" }}>
+            {!attempt.ready && <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-paper">Restoring your game…</div>}
             {attempt.paused && <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-paper"><button type="button" disabled={false} onClick={attempt.togglePause}>Paused — use Resume above</button></div>}
             <PuzzleBoard
               foundPaths={foundPaths}
               hintCell={hintCell}
               invalidPath={invalidPath}
               resetToken={resetToken}
+              restoredSelection={restoredSelection}
               completed={completed}
               onWordAttempt={handleWordAttempt}
               onTapStart={handleTapStart}
+              onSelectionChange={(path) => { setRestoredSelection(path); attempt.select(path); }}
             />
             </fieldset>
           </div>
@@ -439,6 +447,19 @@ export default function WordSearchGame() {
         onPlayAgain={handlePlayAgain}
         onClose={closeCelebration}
       />
+
+      {resetArmed && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/35 px-4" role="presentation">
+          <div className="soft-card w-full max-w-sm rounded-[20px] p-5" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+            <h2 id="reset-title" className="font-display text-xl font-bold text-ink">Reset game?</h2>
+            <p className="mt-2 text-sm text-[#6f675b]">This will erase your current progress.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className="rounded-lg border px-4 py-2 font-bold" onClick={cancelReset}>Cancel</button>
+              <button type="button" className="rounded-lg bg-[#b9664b] px-4 py-2 font-bold text-white" onClick={confirmReset}>Reset</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast ? (
         <div
