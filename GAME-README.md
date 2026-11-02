@@ -27,6 +27,20 @@ Progress is sent on finds, hints, pauses and every 10 seconds. Check the visible
 before leaving: unsaved browser state cannot be guaranteed after closing the tab or losing access.
 The timer and score are browser-reported learning records, not a tamper-proof examination system.
 
+## Boards and hints
+
+Every genuinely new attempt (first open, Reset, Play Again, a new assignment) gets a new random
+21×21 board with the same 30 words. The board is a deterministic function of the attempt id
+(`src/data/layout.ts`): new ids are UUIDv8 values `xxxxxxxx-xxxx-8001-…` (`001` = generator version).
+The attempt id is already saved by the portal and Supabase, so refresh, remount and restore rebuild
+exactly the same board. Older UUIDv4 attempts keep the original fixed board (`src/data/puzzle.ts`).
+A board is shown only when all 30 words appear exactly once at their stored paths.
+**Never change the output of generator version 1** (pinned by a golden test): saved games would move.
+A new algorithm needs a new version number and must keep version 1 working.
+
+Each attempt allows 5 hints ("Hints left: N"); a hint sparkles the first letter of one unfound word.
+Hints never reduce the words-found score; hints used are saved for Game Results.
+
 ## Assets
 
 Fonts load from Google Fonts, with local fallbacks. Audio uses browser speech synthesis;
