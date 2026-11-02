@@ -292,18 +292,18 @@ export default function WordSearchGame() {
   return (
     <main
       id="word-search-game"
-      className="mx-auto mt-3 w-full max-w-[1120px] scroll-mt-4 px-3 pb-7 sm:mt-4 sm:px-6 lg:px-8"
+      className="mx-auto mt-3 w-full max-w-[1240px] scroll-mt-4 px-2 pb-7 sm:mt-4 sm:px-4 lg:px-6"
     >
-      <div className="soft-card mb-3 rounded-[18px] p-3 text-sm" aria-live="polite">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="soft-card mb-3 rounded-[18px] px-3 py-2.5 text-[15px] sm:px-4" aria-live="polite">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <strong>Playing time: {formatTime(attempt.seconds)}</strong>
-          <span>Hints left: {attempt.hintsLeft}</span>
-          <button type="button" onClick={attempt.togglePause} disabled={!attempt.ready || !attempt.started || completed} className="rounded-lg border px-3 py-1">{attempt.paused ? "Resume" : "Pause"}</button>
+          <span className="font-bold">Hints left: {attempt.hintsLeft}</span>
+          <button type="button" onClick={attempt.togglePause} disabled={!attempt.ready || !attempt.started || completed} className="rounded-lg border px-3.5 py-1.5 font-bold">{attempt.paused ? "Resume" : "Pause"}</button>
         </div>
-        <p className="mt-1 text-xs">{attempt.saveMessage}</p>
+        <p className="mt-1 text-[13px]">{attempt.saveMessage}</p>
         {attempt.saveMessage.includes("try again") && <button type="button" onClick={attempt.retry} className="underline">Try saving again</button>}
       </div>
-      <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_292px] lg:grid-cols-[minmax(0,1fr)_316px] xl:grid-cols-[minmax(0,1fr)_376px] md:gap-3 xl:gap-4">
+      <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_256px] lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-4">
         <section
           ref={boardCardRef}
           className="soft-card rounded-[24px] p-2.5 sm:p-3"
@@ -316,14 +316,14 @@ export default function WordSearchGame() {
               </span>
               <h2
                 id="puzzle-title"
-                className="whitespace-nowrap font-display text-[16px] font-bold leading-none text-ink sm:text-[17px]"
+                className="whitespace-nowrap font-display text-[18px] font-bold leading-none text-ink sm:text-[20px]"
               >
                 The puzzle
               </h2>
             </div>
 
             <div className="flex w-full flex-wrap items-center gap-1.5 md:ml-auto md:w-auto">
-              <span className="mr-0.5 whitespace-nowrap rounded-full border border-[#eaddc9] bg-[#fbf3e5] px-2 py-1 text-[10px] font-extrabold text-[#776b58] sm:text-[10.5px]">
+              <span className="mr-0.5 whitespace-nowrap rounded-full border border-[#eaddc9] bg-[#fbf3e5] px-2.5 py-1 text-[12px] font-extrabold text-[#776b58] sm:text-[13px]">
                 Words Found:{" "}
                 <span className="text-[#4f7049]" aria-live="polite">
                   {foundWords.length}
@@ -336,11 +336,11 @@ export default function WordSearchGame() {
                   type="button"
                   onClick={handleHint}
                   disabled={!attempt.ready || !layout || completed || attempt.paused || attempt.hintsLeft === 0}
-                  className="inline-flex h-8 items-center justify-center sm:h-9 gap-1 rounded-[8px] border border-[#e5d291] bg-butter-soft px-2 text-[10px] font-extrabold text-[#725a24] transition hover:bg-[#f8ebac] disabled:cursor-not-allowed disabled:opacity-45 sm:text-[10.5px]"
+                  className="inline-flex h-9 items-center justify-center sm:h-10 gap-1.5 rounded-[9px] border border-[#e5d291] bg-butter-soft px-2.5 text-[12px] font-extrabold text-[#725a24] transition hover:bg-[#f8ebac] disabled:cursor-not-allowed disabled:opacity-45 sm:text-[13px]"
                   title={attempt.hintsLeft === 0 ? "No hints left for this game" : `Glow the first letter of one unfound word (${MAX_HINTS} hints per game)`}
                   aria-label={`Hint — ${attempt.hintsLeft} of ${MAX_HINTS} left`}
                 >
-                  <LightbulbIcon className="h-3.5 w-3.5" />
+                  <LightbulbIcon className="h-4 w-4" />
                   Hint ({attempt.hintsLeft})
                 </button>
 
@@ -348,18 +348,18 @@ export default function WordSearchGame() {
                   type="button"
                   onClick={handleReset}
                   disabled={!attempt.ready}
-                  className="inline-flex h-8 items-center justify-center sm:h-9 gap-1 rounded-[8px] border border-[#e6dac7] bg-white px-2 text-[10px] font-extrabold text-[#677162] transition hover:bg-[#fcf7ed] disabled:opacity-45 sm:text-[10.5px]"
+                  className="inline-flex h-9 items-center justify-center sm:h-10 gap-1.5 rounded-[9px] border border-[#e6dac7] bg-white px-2.5 text-[12px] font-extrabold text-[#677162] transition hover:bg-[#fcf7ed] disabled:opacity-45 sm:text-[13px]"
                   aria-label="Reset the word search"
                   title="Clear the board and start again"
                 >
-                  <ResetIcon className="h-3.5 w-3.5" />
+                  <ResetIcon className="h-4 w-4" />
                   Reset
                 </button>
 
                 <button
                   type="button"
                   onClick={handleToggleAudio}
-                  className={`inline-flex h-8 items-center justify-center sm:h-9 gap-1 rounded-[8px] border px-2 text-[10px] font-extrabold transition sm:text-[10.5px] ${
+                  className={`inline-flex h-9 items-center justify-center sm:h-10 gap-1.5 rounded-[9px] border px-2.5 text-[12px] font-extrabold transition sm:text-[13px] ${
                     audioOn
                       ? "border-[#bcd0b2] bg-[#ebf3e6] text-[#4d6c47]"
                       : "border-[#e2d6c3] bg-[#f7f1e6] text-[#8b8171]"
@@ -368,9 +368,9 @@ export default function WordSearchGame() {
                   title="Turn automatic word pronunciation on or off"
                 >
                   {audioOn ? (
-                    <VolumeIcon className="h-3.5 w-3.5" />
+                    <VolumeIcon className="h-4 w-4" />
                   ) : (
-                    <VolumeOffIcon className="h-3.5 w-3.5" />
+                    <VolumeOffIcon className="h-4 w-4" />
                   )}
                   {audioOn ? "Audio on" : "Audio off"}
                 </button>
@@ -399,7 +399,7 @@ export default function WordSearchGame() {
 
           <div className="mt-2">
             <div
-              className={`flex min-h-[30px] max-w-full items-center gap-1.5 rounded-[9px] border px-2 py-1.5 text-[10px] font-bold leading-tight sm:text-[10.5px] ${feedbackClasses}`}
+              className={`flex min-h-[36px] max-w-full items-center gap-2 rounded-[10px] border px-3 py-2 text-[13px] font-bold leading-snug sm:text-[14px] ${feedbackClasses}`}
               role="status"
               aria-live="polite"
             >
@@ -446,12 +446,12 @@ export default function WordSearchGame() {
         </section>
 
         <aside className="flex flex-col gap-2.5 sm:gap-3" aria-label="Progress and word list">
-          <ProgressCard found={foundWords.length} />
           <WordList
             foundWords={foundWords}
             speechSupported={speechSupported}
             onSpeak={handleSpeakWord}
           />
+          <ProgressCard found={foundWords.length} />
         </aside>
       </div>
 

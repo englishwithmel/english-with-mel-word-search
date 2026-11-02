@@ -53,17 +53,17 @@ export default function ProgressCard({ found }: ProgressCardProps) {
               </span>
               <h2
                 id="progress-title"
-                className="truncate font-display text-[14px] font-bold leading-none text-ink"
+                className="whitespace-nowrap font-display text-[16px] font-bold leading-none text-ink"
               >
                 Your progress
               </h2>
             </div>
-            <span className="whitespace-nowrap text-[8px] font-extrabold uppercase tracking-[0.06em] text-[#9a927f]">
+            <span className="whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.06em] text-[#9a927f] md:hidden xl:inline">
               {remaining === 0 ? "Complete" : `${remaining} to go`}
             </span>
           </div>
           <p className="mt-1 flex items-baseline gap-1.5 leading-none">
-            <span className="text-[9px] font-extrabold uppercase tracking-[0.08em] text-[#8b9285]">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#8b9285]">
               Words Found:
             </span>
             <span
