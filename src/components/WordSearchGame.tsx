@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PuzzleBoard from "./PuzzleBoard";
 import ProgressCard from "./ProgressCard";
 import WordList from "./WordList";
@@ -6,13 +6,8 @@ import Celebration from "./Celebration";
 import { useSpeech } from "../hooks/useSpeech";
 import { useAttempt } from "../hooks/useAttempt";
 import { formatTime, type Snapshot } from "../lib/attempt";
-import {
-  ALL_WORDS,
-  FLAT_LETTERS,
-  TOTAL_WORDS,
-  WORD_PATHS,
-  WORD_TONE,
-} from "../data/puzzle";
+import { ALL_WORDS, GRID_SIZE, TOTAL_WORDS, WORD_TONE } from "../data/puzzle";
+import { MAX_HINTS, layoutForAttempt, pathSpells } from "../data/layout";
 import {
   CheckIcon,
   GridIcon,
@@ -31,6 +26,8 @@ type Feedback = {
   message: string;
   word?: string;
 };
+
+const BLANK_BOARD: string[] = new Array(GRID_SIZE * GRID_SIZE).fill("");
 
 type Toast = {
   id: number;
@@ -67,7 +64,12 @@ export default function WordSearchGame() {
   const { speak, stop, supported: speechSupported } = useSpeech();
 
   const applyRestore = useCallback((snapshot: Snapshot) => {
-    const restoredPaths = Object.fromEntries(snapshot.words.map((word) => [word, snapshot.foundPaths[word] ?? WORD_PATHS[word]?.[0] ?? []]));
+    // The restored attempt id rebuilds its own board; keep each saved path only if it spells the word there.
+    const board = layoutForAttempt(snapshot.attemptId);
+    const restoredPaths = Object.fromEntries(snapshot.words.map((word) => {
+      const saved = snapshot.foundPaths[word];
+      return [word, saved && pathSpells(board.letters, saved, word) ? saved : board.paths[word] ?? []];
+    }));
     foundRef.current = [...snapshot.words];
     foundPathsRef.current = restoredPaths;
     setFoundWords([...snapshot.words]);
@@ -76,6 +78,9 @@ export default function WordSearchGame() {
     setResetToken((token) => token + 1);
   }, []);
   const attempt = useAttempt(applyRestore);
+  const layout = useMemo(() => attempt.boardId ? layoutForAttempt(attempt.boardId) : null, [attempt.boardId]);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
 
   const completed = foundWords.length === TOTAL_WORDS;
 
@@ -127,7 +132,9 @@ export default function WordSearchGame() {
 
   const handleWordAttempt = useCallback(
     (path: number[]) => {
-      const selected = path.map((index) => FLAT_LETTERS[index]).join("");
+      const board = layoutRef.current;
+      if (!board) return;
+      const selected = path.map((index) => board.letters[index]).join("");
       const reversed = [...selected].reverse().join("");
 
       if (selected.length < 3) {
@@ -173,22 +180,26 @@ export default function WordSearchGame() {
   );
 
   const handleHint = () => {
+    const board = layoutRef.current;
     const remaining = ALL_WORDS.filter((word) => !foundRef.current.includes(word));
-    if (remaining.length === 0) return;
+    if (!board || remaining.length === 0) return;
 
+    // One clue only: the first letter of one unfound word.
     const word = remaining[Math.floor(Math.random() * remaining.length)];
-    const paths = WORD_PATHS[word];
-    if (!paths?.length) return;
-    attempt.hint();
-
-    const path = paths[Math.floor(Math.random() * paths.length)];
+    const path = board.paths[word];
+    if (!path?.length) return;
+    if (!attempt.hint()) {
+      setFeedback({ kind: "info", message: "No hints left for this game — you can do it!" });
+      return;
+    }
+    const left = attempt.hintsLeft - 1;
     const firstLetter = path[0];
 
     stopHintTimer();
     setHintCell(null);
     setFeedback({
       kind: "hint",
-      message: "A first letter is sparkling. Take a good look around it!",
+      message: `A first letter is sparkling. Take a good look around it! ${left === 0 ? "That was your last hint." : `Hints left: ${left}.`}`,
     });
 
     hintTimerRef.current = window.setTimeout(() => {
@@ -286,7 +297,7 @@ export default function WordSearchGame() {
       <div className="soft-card mb-3 rounded-[18px] p-3 text-sm" aria-live="polite">
         <div className="flex flex-wrap items-center gap-3">
           <strong>Playing time: {formatTime(attempt.seconds)}</strong>
-          <span>Hints used: {attempt.hints}</span>
+          <span>Hints left: {attempt.hintsLeft}</span>
           <button type="button" onClick={attempt.togglePause} disabled={!attempt.ready || !attempt.started || completed} className="rounded-lg border px-3 py-1">{attempt.paused ? "Resume" : "Pause"}</button>
         </div>
         <p className="mt-1 text-xs">{attempt.saveMessage}</p>
@@ -324,12 +335,13 @@ export default function WordSearchGame() {
                 <button
                   type="button"
                   onClick={handleHint}
-                  disabled={!attempt.ready || completed || attempt.paused}
+                  disabled={!attempt.ready || !layout || completed || attempt.paused || attempt.hintsLeft === 0}
                   className="inline-flex h-8 items-center justify-center sm:h-9 gap-1 rounded-[8px] border border-[#e5d291] bg-butter-soft px-2 text-[10px] font-extrabold text-[#725a24] transition hover:bg-[#f8ebac] disabled:cursor-not-allowed disabled:opacity-45 sm:text-[10.5px]"
-                  title="Glow the first letter of one unfound word"
+                  title={attempt.hintsLeft === 0 ? "No hints left for this game" : `Glow the first letter of one unfound word (${MAX_HINTS} hints per game)`}
+                  aria-label={`Hint — ${attempt.hintsLeft} of ${MAX_HINTS} left`}
                 >
                   <LightbulbIcon className="h-3.5 w-3.5" />
-                  Hint
+                  Hint ({attempt.hintsLeft})
                 </button>
 
                 <button
@@ -367,10 +379,11 @@ export default function WordSearchGame() {
           </div>
 
           <div className="puzzle-frame mt-2" onPointerDownCapture={attempt.start}>
-            <fieldset disabled={!attempt.ready || attempt.paused} style={{ border: 0, padding: 0, margin: 0, position: "relative" }}>
-            {!attempt.ready && <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-paper">Restoring your game…</div>}
+            <fieldset disabled={!attempt.ready || !layout || attempt.paused} style={{ border: 0, padding: 0, margin: 0, position: "relative" }}>
+            {(!attempt.ready || !layout) && <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-paper">Restoring your game…</div>}
             {attempt.paused && <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-paper"><button type="button" disabled={false} onClick={attempt.togglePause}>Paused — use Resume above</button></div>}
             <PuzzleBoard
+              letters={layout?.letters ?? BLANK_BOARD}
               foundPaths={foundPaths}
               hintCell={hintCell}
               invalidPath={invalidPath}

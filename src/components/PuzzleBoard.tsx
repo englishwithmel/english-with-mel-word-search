@@ -2,13 +2,13 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import {
   buildPath,
-  FLAT_LETTERS,
   GRID_SIZE,
   WORD_TONE,
   type Tone,
 } from "../data/puzzle";
 
 type PuzzleBoardProps = {
+  letters: string[];
   foundPaths: Record<string, number[]>;
   hintCell: number | null;
   invalidPath: number[];
@@ -73,6 +73,7 @@ const Cell = memo(function Cell({
 });
 
 export default function PuzzleBoard({
+  letters,
   foundPaths,
   hintCell,
   invalidPath,
@@ -142,8 +143,8 @@ export default function PuzzleBoard({
 
     if (!cell || !boardRef.current?.contains(cell)) return null;
     const index = Number(cell.dataset.cell);
-    return Number.isInteger(index) && index >= 0 && index < FLAT_LETTERS.length ? index : null;
-  }, []);
+    return Number.isInteger(index) && index >= 0 && index < letters.length ? index : null;
+  }, [letters.length]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -245,7 +246,7 @@ export default function PuzzleBoard({
         onPointerCancel={handlePointerCancel}
         onLostPointerCapture={handlePointerCancel}
       >
-        {FLAT_LETTERS.map((letter, index) => (
+        {letters.map((letter, index) => (
           <Cell
             key={index}
             index={index}
